@@ -1,0 +1,83 @@
+
+---
+-
+  hosts: ci-server
+  tasks:
+    - name: "install JDK 8"
+      package: "name=openjdk-8-jdk-headless state=present"
+
+    - name: "Ajouter utilisateur 'wildfly'"
+      user:
+        name: wildfly
+        password: 415DMZ
+        group: wildfly
+        home: /home/wildfly
+        system: true
+
+    - name: "download wildfly"
+      get_url:
+        url: http://download.jboss.org/wildfly/11.0.0.Final/wildfly-11.0.0.Final.tar.gz
+        dest: /opt/wildfly-11.0.0.Final.tar.gz
+
+    - name: "unzip archive"  
+      unarchive:
+        dest: /opt/
+        src: /opt/wildfly-11.0.0.Final.tar.gz
+        remote_src: yes
+        copy: no
+
+    - name: "Nouveau nom pour dossier wildfly"
+      command: "mv /opt/wildfly-11.0.0.Final /opt/wildfly"
+      args:
+        chdir: /opt
+        creates: /opt/wildfly
+
+    - name: "droit sur le repertoire /opt"
+      file:
+        path: /opt/wildfly/
+        state: directory
+        mode: 0755
+        owner: wildfly
+        group: wildfly
+        recurse: yes
+   
+    - name: "Creation repertoire wildfly dans etc"
+      file: 
+        path: /etc/wildfly
+        state: directory 
+        mode: 0755
+        owner: wildfly
+        group: wildfly
+    
+    - name: "deplacement du .conf"
+      copy: 
+        src: /opt/wildfly/docs/contrib/scripts/systemd/wildfly.conf
+        dest: /etc/wildfly
+        remote_src: yes
+        owner: wildfly
+        group: wildfly
+
+    - name: "deplacement du service"
+      copy: 
+        src: /opt/wildfly/docs/contrib/scripts/systemd/wildfly.service
+        dest: /etc/systemd/system
+        remote_src: yes
+        owner: wildfly
+        group: wildfly
+   
+    - name: "deplacement launch + droit execution"
+      copy: 
+        src: /opt/wildfly/docs/contrib/scripts/systemd/launch.sh
+        dest: /opt/wildfly/bin
+        remote_src: yes
+        mode: 0755
+        owner: wildfly
+        group: wildfly
+
+    - name: "demarrage de wildfly"
+      service:
+        name: wildfly
+        state: started
+
+    - name: "relancer daemon"
+      command: systemctl daemon-reload
